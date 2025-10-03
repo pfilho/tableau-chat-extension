@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <script src="https://www.tableau.com/javascripts/api/tableau.extensions.1.latest.js"></script>
+    <style>
+        body { font-family: Arial; padding: 20px; margin: 0; }
+        #chat-box { height: 300px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; background: #fafafa; }
+        .msg { margin: 8px 0; padding: 10px; border-radius: 5px; }
+        .user { background: #e3f2fd; text-align: right; }
+        .ia { background: #e8f5e9; }
+        select, button { padding: 10px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h3>Chat IA - Análise de Dados</h3>
+    <select id="prompt">
+        <option value="resumo">Resumo Geral</option>
+        <option value="top5">Top 5 Produtos</option>
+        <option value="tendencias">Tendências</option>
+        <option value="anomalias">Anomalias</option>
+        <option value="recomendacoes">Recomendações</option>
+    </select>
+    <button onclick="analisar()">Analisar</button>
+    <div id="chat-box"></div>
+
+    <script>
+        const API_KEY = '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';
+        let dados = null;
+        
+        tableau.extensions.initializeAsync().then(function() {
+            const sheet = tableau.extensions.dashboardContent.dashboard.worksheets[0];
+            sheet.getSummaryDataAsync().then(function(data) {
+                dados = data;
+                addMsg('Dados carregados! Selecione uma análise.', 'ia');
+            });
+        });
+        
+        async function analisar() {
+            if (!dados) return;
+            
+            const promptSel = document.getElementById('prompt').value;
+            const prompts = {
+                'resumo': 'Faça um resumo executivo em 3 pontos',
+                'top5': 'Liste os 5 itens mais importantes',
+                'tendencias': 'Identifique as principais tendências',
+                'anomalias': 'Detecte possíveis anomalias',
+                'recomendacoes': 'Dê 3 recomendações acionáveis'
+            };
+            
+            addMsg(prompts[promptSel], 'user');
+            addMsg('Analisando...', 'ia');
+            
+            const cols = dados.columns.map(c => c.fieldName);
+            const contexto = `Dados: ${dados.data.length} linhas. Colunas: ${cols.join(', ')}`;
+            
+            try {
+                const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${API_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: 'llama-3.1-8b-instant',
+                        messages: [
+                            {role: 'system', content: `Analista Carrefour. ${contexto}. Seja conciso.`},
+                            {role: 'user', content: prompts[promptSel]}
+                        ],
+                        max_tokens: 300
+                    })
+                });
+                
+                const data = await res.json();
+                const chatBox = document.getElementById('chat-box');
+                chatBox.removeChild(chatBox.lastChild);
+                addMsg(data.choices[0].message.content, 'ia');
+            } catch(e) {
+                addMsg('Erro: ' + e.message, 'ia');
+            }
+        }
+        
+        function addMsg(txt, tipo) {
+            const box = document.getElementById('chat-box');
+            const msg = document.createElement('div');
+            msg.className = `msg ${tipo}`;
+            msg.textContent = txt;
+            box.appendChild(msg);
+            box.scrollTop = box.scrollHeight;
+        }
+    </script>
+</body>
+</html>

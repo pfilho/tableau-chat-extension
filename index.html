@@ -5,7 +5,7 @@
     <script src="https://www.tableau.com/javascripts/api/tableau.extensions.1.latest.js"></script>
     <style>
         body { font-family: Arial; padding: 20px; margin: 0; }
-        #status { color: #666; font-size: 12px; margin-bottom: 10px; }
+        #status { color: #666; font-size: 12px; margin-bottom: 10px; padding: 10px; background: #f0f0f0; }
         #chat-box { height: 250px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; background: #fafafa; }
         .msg { margin: 8px 0; padding: 10px; border-radius: 5px; }
         .user { background: #e3f2fd; text-align: right; }
@@ -15,10 +15,10 @@
 </head>
 <body>
     <h3>Chat IA - Carrefour</h3>
-    <div id="status">Carregando...</div>
+    <div id="status">Iniciando extensão...</div>
     
     <label>Worksheet:</label>
-    <select id="worksheet"></select>
+    <select id="worksheet"><option>Aguardando...</option></select>
     <br>
     
     <label>Análise:</label>
@@ -37,30 +37,50 @@
         const API_KEY = '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';
         let worksheets = [];
         
-        tableau.extensions.initializeAsync().then(function() {
-            worksheets = tableau.extensions.dashboardContent.dashboard.worksheets;
+        // Log 1
+        document.getElementById('status').textContent = 'Verificando Tableau API...';
+        console.log('Página carregada');
+        
+        // Log 2
+        if (typeof tableau === 'undefined') {
+            document.getElementById('status').textContent = '❌ ERRO: Tableau API não encontrada';
+            console.error('Tableau não definido');
+        } else {
+            document.getElementById('status').textContent = 'Tableau API encontrada. Inicializando...';
+            console.log('Tableau encontrado:', tableau);
             
-            document.getElementById('status').textContent = `✅ ${worksheets.length} worksheet(s) encontrada(s)`;
-            
-            // Preencher dropdown de worksheets
-            const select = document.getElementById('worksheet');
-            worksheets.forEach(function(ws, i) {
-                const option = document.createElement('option');
-                option.value = i;
-                option.textContent = ws.name;
-                select.appendChild(option);
+            // Log 3
+            tableau.extensions.initializeAsync().then(function() {
+                document.getElementById('status').textContent = 'Extensão inicializada. Buscando worksheets...';
+                console.log('Extensão inicializada');
+                
+                worksheets = tableau.extensions.dashboardContent.dashboard.worksheets;
+                console.log('Worksheets:', worksheets);
+                
+                document.getElementById('status').textContent = `✅ ${worksheets.length} worksheet(s) encontrada(s)`;
+                
+                const select = document.getElementById('worksheet');
+                select.innerHTML = '';
+                worksheets.forEach(function(ws, i) {
+                    const option = document.createElement('option');
+                    option.value = i;
+                    option.textContent = ws.name;
+                    select.appendChild(option);
+                });
+                
+                addMsg('Pronto! Selecione a worksheet e clique em Analisar.', 'ia');
+                
+            }).catch(function(error) {
+                document.getElementById('status').textContent = '❌ Erro ao inicializar: ' + error;
+                console.error('Erro na inicialização:', error);
             });
-            
-            addMsg('Pronto! Selecione a worksheet e a análise desejada.', 'ia');
-            
-        }).catch(function(error) {
-            document.getElementById('status').textContent = '❌ Erro: ' + error;
-        });
+        }
         
         async function analisar() {
             const wsIndex = document.getElementById('worksheet').value;
-            if (!wsIndex && wsIndex !== 0) {
-                alert('Selecione uma worksheet!');
+            
+            if (!worksheets || worksheets.length === 0) {
+                alert('Nenhuma worksheet disponível!');
                 return;
             }
             
@@ -69,33 +89,21 @@
             
             const prompts = {
                 'resumo': 'Faça um resumo executivo em 3 pontos principais',
-                'top5': 'Liste os 5 itens mais importantes e explique por quê',
-                'tendencias': 'Identifique as principais tendências nos dados',
-                'anomalias': 'Detecte possíveis anomalias ou pontos de atenção',
-                'recomendacoes': 'Dê 3 recomendações práticas e acionáveis'
+                'top5': 'Liste os 5 itens mais importantes',
+                'tendencias': 'Identifique as principais tendências',
+                'anomalias': 'Detecte possíveis anomalias',
+                'recomendacoes': 'Dê 3 recomendações práticas'
             };
             
             addMsg(prompts[promptSel], 'user');
-            addMsg('Analisando dados...', 'ia');
+            addMsg('Analisando...', 'ia');
             
             try {
                 const dataTable = await worksheet.getSummaryDataAsync();
-                
                 const cols = dataTable.columns.map(c => c.fieldName);
                 const numLinhas = dataTable.data.length;
                 
-                // Pegar amostra dos dados
-                const amostra = dataTable.data.slice(0, 5).map(row => 
-                    row.map(cell => cell.formattedValue).join(', ')
-                ).join('\n');
-                
-                const contexto = `
-Worksheet: ${worksheet.name}
-Colunas: ${cols.join(', ')}
-Total de linhas: ${numLinhas}
-Amostra dos dados:
-${amostra}
-                `.trim();
+                const contexto = `Worksheet: ${worksheet.name}, ${numLinhas} linhas, Colunas: ${cols.join(', ')}`;
                 
                 const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                     method: 'POST',
@@ -106,27 +114,23 @@ ${amostra}
                     body: JSON.stringify({
                         model: 'llama-3.1-8b-instant',
                         messages: [
-                            {role: 'system', content: `Você é analista de dados do Carrefour. ${contexto}. Responda de forma concisa e objetiva.`},
+                            {role: 'system', content: `Analista Carrefour. ${contexto}. Conciso.`},
                             {role: 'user', content: prompts[promptSel]}
                         ],
-                        max_tokens: 300,
-                        temperature: 0.7
+                        max_tokens: 250
                     })
                 });
                 
                 const data = await res.json();
-                
-                // Remove "Analisando..."
                 const chatBox = document.getElementById('chat-box');
                 chatBox.removeChild(chatBox.lastChild);
-                
                 addMsg(data.choices[0].message.content, 'ia');
                 
             } catch(e) {
                 const chatBox = document.getElementById('chat-box');
-                chatBox.removeChild(chatBox.lastChild);
+                if(chatBox.lastChild) chatBox.removeChild(chatBox.lastChild);
                 addMsg('❌ Erro: ' + e.message, 'ia');
-                console.error('Erro completo:', e);
+                console.error(e);
             }
         }
         

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest manifest-version="0.1" xmlns="http://www.tableau.com/xml/extension_manifest">
+  <dashboard-extension id="com.carrefour.chat" extension-version="1.0.0">
+    <default-locale>en_US</default-locale>
+    <name resource-id="name"/>
+    <description>Chat IA Carrefour</description>
+    <author name="Paulo" email="email@exemplo.com" organization="Carrefour" website="https://github.com"/>
+    <min-api-version>1.4</min-api-version>
+    <source-location>
+      <url>https://SEU-USUARIO.github.io/tableau-chat-extension/index.html</url>
+    </source-location>
+    <icon></icon>
+  </dashboard-extension>
+  <resources>
+    <resource id="name">
+      <text locale="en_US">Chat IA Carrefour</text>
+    </resource>
+  </resources>
+</manifest>

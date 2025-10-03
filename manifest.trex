@@ -2,18 +2,13 @@
 <manifest manifest-version="0.1" xmlns="http://www.tableau.com/xml/extension_manifest">
   <dashboard-extension id="com.carrefour.chat" extension-version="1.0.0">
     <default-locale>en_US</default-locale>
-    <name resource-id="name"/>
-    <description>Chat IA Carrefour</description>
+    <name>Chat IA Carrefour</name>
+    <description>Extensão de análise com IA conectada ao Tableau</description>
     <author name="Paulo" email="email@exemplo.com" organization="Carrefour" website="https://github.com"/>
     <min-api-version>1.4</min-api-version>
     <source-location>
       <url>https://68e027620f878620b42f73bd--luxury-pavlova-33784b.netlify.app/index.html</url>
     </source-location>
-    <icon></icon>
+    <icon>https://68e027620f878620b42f73bd--luxury-pavlova-33784b.netlify.app/icon.png</icon>
   </dashboard-extension>
-  <resources>
-    <resource id="name">
-      <text locale="en_US">Chat IA Carrefour</text>
-    </resource>
-  </resources>
 </manifest>
